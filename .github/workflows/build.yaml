@@ -6,8 +6,8 @@ on:
 
 env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  VCPKG_REPOSITORY: https://github.com/OpenMW/vcpkg.git
-  VCPKG_REVISION: ab5f50f1a7b54a6f4d6239677cba9d730e6ab152
+  VCPKG_REPOSITORY: https://github.com/microsoft/vcpkg.git
+  VCPKG_REVISION: 137197a8f85e6c6cf1843ef024af7d9c28bb0bde
 
 jobs:
   static:
@@ -46,7 +46,7 @@ jobs:
 
     - name: Install vcpkg packages
       run: >
-        vcpkg install --triplet x64-windows-static
+        vcpkg install --overlay-ports=ports --triplet x64-windows-static
         boost-geometry
         boost-iostreams
         boost-program-options
@@ -133,7 +133,7 @@ jobs:
 
     - name: Install vcpkg packages
       run: >
-        vcpkg install --triplet x64-windows
+        vcpkg install --overlay-ports=ports --triplet x64-windows
         boost-geometry
         boost-iostreams
         boost-program-options
