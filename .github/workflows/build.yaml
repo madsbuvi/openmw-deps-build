@@ -206,99 +206,22 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    if: startsWith(github.ref, 'refs/tags/')
+
     steps:
     - uses: actions/checkout@v4
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
 
-    - name: Setup ssh-agent
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      if: ${{ env.SSH_PRIVATE_KEY != '' }}
-      uses: webfactory/ssh-agent@v0.9.0
+    - name: Rename artifacts
+      run: |
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-${{ github.sha }}.7z windows-2019.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-${{ github.sha }}.7z windows-2022.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-pdb-${{ github.sha }}.7z windows-2019-pdb.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-pdb-${{ github.sha }}.7z windows-2022-pdb.7z
+
+    - name: Release
+      uses: softprops/action-gh-release@v2
       with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: Import GPG key
-      id: import_gpg
-      env:
-        GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        GPG_PRIVATE_KEY_PASSPHRASE: ${{ secrets.GPG_PRIVATE_KEY_PASSPHRASE }}
-      if: ${{ env.GPG_PRIVATE_KEY != '' && env.GPG_PRIVATE_KEY_PASSPHRASE != '' }}
-      uses: crazy-max/ghaction-import-gpg@v6
-      with:
-        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-        passphrase: ${{ secrets.GPG_PRIVATE_KEY_PASSPHRASE }}
-
-    - name: Configure ssh known hosts for gitlab.com
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      if: ${{ env.SSH_PRIVATE_KEY != '' }}
-      run: cat gitlab_known_hosts >> ~/.ssh/known_hosts
-
-    - name: Configure git user
-      run: |
-        git config --global user.email 'openmw-deps-build@users.noreply.github.com'
-        git config --global user.name 'openmw-deps-build'
-
-    - name: Configure git sign key
-      if: ${{ steps.import_gpg.outputs.fingerprint != '' }}
-      run: |
-        git config --global user.signkey ${{ steps.import_gpg.outputs.fingerprint }}
-        git config --global commit.gpgsign true
-
-    - name: Clone openmw-deps repository via SSH
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        GIT_LFS_SKIP_SMUDGE: 1
-        # see https://github.com/git-lfs/git-lfs/issues/5749
-        GIT_CLONE_PROTECTION_ACTIVE: false
-      if: ${{ env.SSH_PRIVATE_KEY != '' }}
-      run: git clone git@gitlab.com:OpenMW/openmw-deps.git
-
-    - name: Clone openmw-deps repository via HTTPS
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        GIT_LFS_SKIP_SMUDGE: 1
-        # see https://github.com/git-lfs/git-lfs/issues/5749
-        GIT_CLONE_PROTECTION_ACTIVE: false
-      if: ${{ env.SSH_PRIVATE_KEY == '' }}
-      run: git clone https://gitlab.com/OpenMW/openmw-deps.git
-
-    - name: Move exported vcpkg packages and pdb files archive to openmw-deps repository
-      run: mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-*-${{ github.sha }}.7z openmw-deps/windows/
-
-    - name: Generate commit message
-      env:
-        GH_TOKEN: ${{ github.token }}
-      working-directory: ${{ github.workspace }}/openmw-deps
-      run: |
-        echo Add vcpkg packages built at ${{ github.sha }} > commit_message.txt
-        echo >> commit_message.txt
-        printf 'Pushed by ' >> commit_message.txt
-        url=$(gh run --repo ${{ github.repository }} view ${{ github.run_id }} --json jobs --jq '.jobs[] | select(.name == "push-dynamic") | .url')
-        echo "${url:?}" >> commit_message.txt
-        echo >> commit_message.txt
-
-    - name: Commit exported vcpkg packages
-      working-directory: ${{ github.workspace }}/openmw-deps
-      run: |
-        git checkout -b vcpkg-x64-${{ github.sha }}
-        git add windows/vcpkg-x64-*-${{ github.sha }}.7z
-        git commit -F commit_message.txt
-
-    - name: Verify commit to openmw-deps repository
-      if: ${{ steps.import_gpg.outputs.fingerprint != '' }}
-      working-directory: ${{ github.workspace }}/openmw-deps
-      run: git verify-commit HEAD
-
-    - name: Push exported vcpkg packages to gitlab
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      # Make sure only signed commits are pushed
-      if: ${{ vars.PUSH_URL != '' && env.SSH_PRIVATE_KEY != '' && steps.import_gpg.outputs.fingerprint != '' }}
-      working-directory: ${{ github.workspace }}/openmw-deps
-      run: |
-        git remote set-url --push origin "${{ vars.PUSH_URL }}"
-        git push origin vcpkg-x64-${{ github.sha }}
+        files: windows-*.7z
