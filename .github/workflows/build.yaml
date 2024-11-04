@@ -206,24 +206,31 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      file: TEST
+
     steps:
     - uses: actions/checkout@v4
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
 
+    - name: Set file name
+      if: startsWith(github.ref, 'refs/tags/')
+      run: echo "file=${{ github.ref_name }}" >> "$GITHUB_ENV"
+
     - name: Rename artifacts
       run: |
-        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-${{ github.sha }}.7z vcpkg-x64-2019-${{ github.ref_name }}.7z
-        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-${{ github.sha }}.7z vcpkg-x64-2022-${{ github.ref_name }}.7z
-        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-pdb-${{ github.sha }}.7z vcpkg-x64-2019-pdb-${{ github.ref_name }}.7z
-        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-pdb-${{ github.sha }}.7z vcpkg-x64-2022-pdb-${{ github.ref_name }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-${{ github.sha }}.7z vcpkg-x64-2019-${{ env.file }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-${{ github.sha }}.7z vcpkg-x64-2022-${{ env.file }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-pdb-${{ github.sha }}.7z vcpkg-x64-2019-pdb-${{ env.file }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-pdb-${{ github.sha }}.7z vcpkg-x64-2022-pdb-${{ env.file }}.7z
 
     - name: Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
-        files: vcpkg-x64-*-${{ github.ref_name }}.7z
+        files: vcpkg-x64-*-${{ env.file }}.7z
 
     - name: Setup ssh-agent
       env:
@@ -281,8 +288,8 @@ jobs:
 
     - name: Generate files containing a download url and hash
       run: |
-        for file in vcpkg-x64-*-${{ github.ref_name }}.7z; do
-          echo "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/$file" > "openmw-deps/windows/$file.txt"
+        for file in vcpkg-x64-*-${{ env.file }}.7z; do
+          echo "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ env.file }}/$file" > "openmw-deps/windows/$file.txt"
           shasum -a 512 "$file" >> "openmw-deps/windows/$file.txt"
         done
 
@@ -302,7 +309,7 @@ jobs:
       working-directory: ${{ github.workspace }}/openmw-deps
       run: |
         git checkout -b vcpkg-x64-${{ github.sha }}
-        git add windows/vcpkg-x64-*-${{ github.ref_name }}.7z.txt
+        git add windows/vcpkg-x64-*-${{ env.file }}.7z.txt
         git commit -F commit_message.txt
 
     - name: Verify commit to openmw-deps repository
