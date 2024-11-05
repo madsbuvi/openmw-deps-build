@@ -221,16 +221,16 @@ jobs:
 
     - name: Rename artifacts
       run: |
-        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-${{ github.sha }}.7z vcpkg-x64-2019-${{ env.file }}.7z
-        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-${{ github.sha }}.7z vcpkg-x64-2022-${{ env.file }}.7z
-        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-pdb-${{ github.sha }}.7z vcpkg-x64-2019-pdb-${{ env.file }}.7z
-        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-pdb-${{ github.sha }}.7z vcpkg-x64-2022-pdb-${{ env.file }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-${{ github.sha }}.7z vcpkg-x64-windows-2019-${{ env.file }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-${{ github.sha }}.7z vcpkg-x64-windows-2022-${{ env.file }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-pdb-${{ github.sha }}.7z vcpkg-x64-windows-2019-pdb-${{ env.file }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-pdb-${{ github.sha }}.7z vcpkg-x64-windows-2022-pdb-${{ env.file }}.7z
 
     - name: Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
-        files: vcpkg-x64-*-${{ env.file }}.7z
+        files: vcpkg-x64-windows-*-${{ env.file }}.7z
 
     - name: Setup ssh-agent
       env:
@@ -288,9 +288,10 @@ jobs:
 
     - name: Generate files containing a download url and hash
       run: |
-        for file in vcpkg-x64-*-${{ env.file }}.7z; do
-          echo "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ env.file }}/$file" > "openmw-deps/windows/$file.txt"
-          shasum -a 512 "$file" >> "openmw-deps/windows/$file.txt"
+        for file in vcpkg-x64-windows-*-${{ env.file }}.7z; do
+          filename=`echo "$file" | sed -r 's/vcpkg-x64-windows-(.+)-${{ env.file }}.7z/vcpkg-x64-\1-${{ env.file }}.txt/'`
+          echo "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ env.file }}/$file" > "openmw-deps/windows/$filename"
+          shasum -a 512 "$file" >> "openmw-deps/windows/$filename"
         done
 
     - name: Generate commit message
@@ -308,8 +309,8 @@ jobs:
     - name: Commit generated metadata
       working-directory: ${{ github.workspace }}/openmw-deps
       run: |
-        git checkout -b vcpkg-x64-${{ github.sha }}
-        git add windows/vcpkg-x64-*-${{ env.file }}.7z.txt
+        git checkout -b vcpkg-x64-windows-${{ github.sha }}
+        git add windows/vcpkg-x64-*-${{ env.file }}.txt
         git commit -F commit_message.txt
 
     - name: Verify commit to openmw-deps repository
@@ -325,4 +326,4 @@ jobs:
       working-directory: ${{ github.workspace }}/openmw-deps
       run: |
         git remote set-url --push origin "${{ vars.PUSH_URL }}"
-        git push origin vcpkg-x64-${{ github.sha }}
+        git push origin vcpkg-x64-windows-${{ github.sha }}
