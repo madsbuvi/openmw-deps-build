@@ -206,11 +206,31 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      file: TEST
+
     steps:
     - uses: actions/checkout@v4
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
+
+    - name: Set file name
+      if: startsWith(github.ref, 'refs/tags/')
+      run: echo "file=${{ github.ref_name }}" >> "$GITHUB_ENV"
+
+    - name: Rename artifacts
+      run: |
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-${{ github.sha }}.7z vcpkg-x64-windows-2019-${{ env.file }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-${{ github.sha }}.7z vcpkg-x64-windows-2022-${{ env.file }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2019-pdb-${{ github.sha }}.7z vcpkg-x64-windows-2019-pdb-${{ env.file }}.7z
+        mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-windows-2022-pdb-${{ github.sha }}.7z vcpkg-x64-windows-2022-pdb-${{ env.file }}.7z
+
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: vcpkg-x64-windows-*-${{ env.file }}.7z
 
     - name: Setup ssh-agent
       env:
@@ -266,26 +286,31 @@ jobs:
       if: ${{ env.SSH_PRIVATE_KEY == '' }}
       run: git clone https://gitlab.com/OpenMW/openmw-deps.git
 
-    - name: Move exported vcpkg packages and pdb files archive to openmw-deps repository
-      run: mv vcpkg-x64-*-${{ github.sha }}/vcpkg-x64-*-${{ github.sha }}.7z openmw-deps/windows/
+    - name: Generate files containing a download url and hash
+      run: |
+        for file in vcpkg-x64-windows-*-${{ env.file }}.7z; do
+          filename=`echo "$file" | sed -r 's/vcpkg-x64-windows-(.+)-${{ env.file }}.7z/vcpkg-x64-\1-${{ env.file }}.txt/'`
+          echo "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ env.file }}/$file" > "openmw-deps/windows/$filename"
+          shasum -a 512 "$file" >> "openmw-deps/windows/$filename"
+        done
 
     - name: Generate commit message
       env:
         GH_TOKEN: ${{ github.token }}
       working-directory: ${{ github.workspace }}/openmw-deps
       run: |
-        echo Add vcpkg packages built at ${{ github.sha }} > commit_message.txt
+        echo Add vcpkg package urls built at ${{ github.sha }} > commit_message.txt
         echo >> commit_message.txt
         printf 'Pushed by ' >> commit_message.txt
         url=$(gh run --repo ${{ github.repository }} view ${{ github.run_id }} --json jobs --jq '.jobs[] | select(.name == "push-dynamic") | .url')
         echo "${url:?}" >> commit_message.txt
         echo >> commit_message.txt
 
-    - name: Commit exported vcpkg packages
+    - name: Commit generated metadata
       working-directory: ${{ github.workspace }}/openmw-deps
       run: |
-        git checkout -b vcpkg-x64-${{ github.sha }}
-        git add windows/vcpkg-x64-*-${{ github.sha }}.7z
+        git checkout -b vcpkg-x64-windows-${{ github.sha }}
+        git add windows/vcpkg-x64-*-${{ env.file }}.txt
         git commit -F commit_message.txt
 
     - name: Verify commit to openmw-deps repository
@@ -293,7 +318,7 @@ jobs:
       working-directory: ${{ github.workspace }}/openmw-deps
       run: git verify-commit HEAD
 
-    - name: Push exported vcpkg packages to gitlab
+    - name: Push generated metadata to gitlab
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       # Make sure only signed commits are pushed
@@ -301,4 +326,4 @@ jobs:
       working-directory: ${{ github.workspace }}/openmw-deps
       run: |
         git remote set-url --push origin "${{ vars.PUSH_URL }}"
-        git push origin vcpkg-x64-${{ github.sha }}
+        git push origin vcpkg-x64-windows-${{ github.sha }}
