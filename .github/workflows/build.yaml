@@ -209,6 +209,9 @@ jobs:
     env:
       file: TEST
 
+    permissions:
+      contents: write
+
     steps:
     - uses: actions/checkout@v4
 
