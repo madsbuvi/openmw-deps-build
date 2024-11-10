@@ -212,6 +212,9 @@ jobs:
     permissions:
       contents: write
 
+    # non-master or tagged master only
+    if: ${{ github.ref_name != 'master' }}
+
     steps:
     - uses: actions/checkout@v4
 
