@@ -3,7 +3,7 @@
   "version": "3.6.5",
   "port-version": 1,
   "description": "Fork of OpenSceneGraph for OpenMW-specific performance improvements.",
-  "homepage": "https://github.com/openmw/osg",
+  "homepage": "https://github.com/madsbuvi/OpenSceneGraph",
   "license": null,
   "supports": "!uwp",
   "dependencies": [
