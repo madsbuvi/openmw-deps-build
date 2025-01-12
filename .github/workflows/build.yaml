@@ -208,7 +208,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      file: TEST
+      file: 2025-01-21-Multiview
 
     permissions:
       contents: write
@@ -282,7 +282,7 @@ jobs:
         # see https://github.com/git-lfs/git-lfs/issues/5749
         GIT_CLONE_PROTECTION_ACTIVE: false
       if: ${{ env.SSH_PRIVATE_KEY != '' }}
-      run: git clone git@gitlab.com:OpenMW/openmw-deps.git
+      run: git clone git@gitlab.com:madsbuvi/openmw-deps.git
 
     - name: Clone openmw-deps repository via HTTPS
       env:
@@ -291,7 +291,7 @@ jobs:
         # see https://github.com/git-lfs/git-lfs/issues/5749
         GIT_CLONE_PROTECTION_ACTIVE: false
       if: ${{ env.SSH_PRIVATE_KEY == '' }}
-      run: git clone https://gitlab.com/OpenMW/openmw-deps.git
+      run: git clone https://gitlab.com/madsbuvi/openmw-deps.git
 
     - name: Generate files containing a download url and hash
       run: |
